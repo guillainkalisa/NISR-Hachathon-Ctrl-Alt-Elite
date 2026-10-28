@@ -1,0 +1,67 @@
+{% extends "dashboard/base.html" %}
+{% load fmt %}
+{% block title %}Budget simulator{% endblock %}
+{% block content %}
+<h1>If support expanded, where should it go?</h1>
+<p class="lede">
+  Compare two ways of adding beneficiary slots: spreading them like today's caseload, or sending each slot to the district
+  where it reaches the most poor households who currently get nothing.
+</p>
+
+{% if not result %}
+<div class="card">No indicators loaded yet.</div>
+{% else %}
+<form class="controls" method="get">
+  <label>Extra beneficiary slots (% of today's {{ round }} caseload)
+    <input type="range" name="pct" min="1" max="50" value="{{ pct }}" oninput="this.nextElementSibling.value = this.value + '%'">
+    <output>{{ pct }}%</output>
+  </label>
+  <button type="submit">Simulate</button>
+</form>
+
+<div class="grid kpis">
+  <div class="card kpi">
+    <div class="label">Extra households supported</div>
+    <div class="value">{{ extra|num }}</div>
+    <div class="sub">same total under both rules</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Poor reached: like today's caseload</div>
+    <div class="value">{{ result.proportional_total|num }}</div>
+    <div class="sub">proportional to current beneficiaries</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Poor reached: need-based</div>
+    <div class="value">{{ result.need_total|num }}</div>
+    <div class="sub"><strong>+{{ gain|num }}</strong> more poor households for the same cost</div>
+  </div>
+</div>
+
+<section class="card">
+  <h2>Recommended allocation</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>District</th><th class="r">Poor missed today</th><th class="r">Targeting precision</th>
+        <th class="r">Slots: like today</th><th class="r">Slots: need-based</th><th class="r">Poor reached: need-based</th>
+      </tr></thead>
+      <tbody>
+      {% for r in result.rows %}
+      <tr>
+        <td><a href="{% url 'dashboard:district' r.slug %}">{{ r.district }}</a></td>
+        <td class="r">{{ r.excluded|num }}</td><td class="r">{{ r.precision|pct }}</td>
+        <td class="r">{{ r.prop_slots|num }}</td><td class="r"><strong>{{ r.need_slots|num }}</strong></td>
+        <td class="r">{{ r.need_reached|num }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">
+    Assumption: new slots reach still-excluded poor households at the district's current targeting precision
+    (share of recipients who are poor), with diminishing returns as fewer excluded households remain.
+    Better targeting tools (see the household checker) would raise every district's precision.
+  </p>
+</section>
+{% endif %}
+{% endblock %}

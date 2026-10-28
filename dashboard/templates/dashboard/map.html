@@ -1,0 +1,79 @@
+{% extends "dashboard/base.html" %}
+{% load static fmt %}
+{% block title %}Map{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+{% block content %}
+<h1>Where is social protection missing poor households?</h1>
+<p class="lede">Each district is shaded by the selected indicator, estimated from the EICV household survey. Click a district for its full profile.</p>
+
+{% if national %}
+<div class="grid kpis">
+  <div class="card kpi">
+    <div class="label">Poor households receiving no support</div>
+    <div class="value">{{ national.exclusion_rate|pct }}</div>
+    <div class="sub">{{ national.round }}, national</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Poor households missed</div>
+    <div class="value">{{ national.excluded|num }}</div>
+    <div class="sub">of {{ national.poor|num }} poor households</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Households receiving support</div>
+    <div class="value">{{ national.beneficiaries|num }}</div>
+    <div class="sub">VUP (direct support, public works) or NSDS</div>
+  </div>
+</div>
+
+<div class="controls">
+  <label>Indicator
+    <select id="metric">
+      <optgroup label="Household survey (EICV)">
+        {% for key, m in metrics.items %}{% if m.source == "survey" %}<option value="{{ key }}">{{ m.label }}</option>{% endif %}{% endfor %}
+      </optgroup>
+      <optgroup label="Satellite (VIIRS night-time lights)">
+        {% for key, m in metrics.items %}{% if m.source == "satellite" %}<option value="{{ key }}">{{ m.label }}</option>{% endif %}{% endfor %}
+      </optgroup>
+    </select>
+  </label>
+  <label>Survey round
+    <select id="round">
+      {% for r in rounds %}<option value="{{ r }}" {% if forloop.last %}selected{% endif %}>{{ r }}</option>{% endfor %}
+    </select>
+  </label>
+</div>
+
+<div class="map-layout">
+  <div>
+    <div id="map" role="img" aria-label="Map of Rwanda's districts shaded by the selected indicator"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <aside class="card">
+    <h2 id="rank-title">Highest 10 districts</h2>
+    <ol class="ranked" id="ranked"></ol>
+  </aside>
+</div>
+
+<details class="card" style="margin-top:1rem">
+  <summary>All districts as a table</summary>
+  <div class="table-wrap"><table id="table"></table></div>
+</details>
+{{ indicators|json_script:"indicators-data" }}
+{{ metrics|json_script:"metrics-data" }}
+{% else %}
+<div class="card">No indicators loaded yet. Run <code>python manage.py load_indicators</code>.</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if national %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  window.GEOJSON_URL = "{% url 'dashboard:geojson' %}";
+  window.DISTRICT_URL = "{% url 'dashboard:district' 'SLUG' %}";
+</script>
+<script src="{% static 'dashboard/map.js' %}"></script>
+{% endif %}
+{% endblock %}

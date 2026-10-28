@@ -1,0 +1,13 @@
+# Survey microdata must never be committed (NISR data-use agreement)
+data/raw/*
+data/interim/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+data/demo/
+
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+staticfiles/
+.env

@@ -1,0 +1,76 @@
+{
+  "round": "EICV7",
+  "is_demo": false,
+  "auc": 0.795139022875022,
+  "n_train": 11285,
+  "n_test": 3769,
+  "importance": [
+    {
+      "feature": "Household members",
+      "importance": 0.10970347018823548
+    },
+    {
+      "feature": "Head's education",
+      "importance": 0.04991458273789591
+    },
+    {
+      "feature": "Floor is cement, tiles or better",
+      "importance": 0.04634733313302203
+    },
+    {
+      "feature": "Livestock (tropical livestock units)",
+      "importance": 0.031343921328177246
+    },
+    {
+      "feature": "Owns a mobile phone",
+      "importance": 0.00977203199442377
+    },
+    {
+      "feature": "Electricity (grid or solar)",
+      "importance": 0.005796424363380759
+    },
+    {
+      "feature": "Main roof material",
+      "importance": 0.005579827683498406
+    },
+    {
+      "feature": "Rooms used for sleeping",
+      "importance": 0.004894189264784488
+    },
+    {
+      "feature": "Children under 5",
+      "importance": 0.001280057878541263
+    },
+    {
+      "feature": "Head is female",
+      "importance": 0.0011019763225628477
+    },
+    {
+      "feature": "Improved drinking-water source",
+      "importance": 0.0009800999764673856
+    },
+    {
+      "feature": "Lives in an urban area",
+      "importance": 0.0006147559338125274
+    },
+    {
+      "feature": "Age of household head",
+      "importance": 0.0004874850275508158
+    },
+    {
+      "feature": "Head has a disability",
+      "importance": 0.00010013525078386153
+    }
+  ],
+  "targeting": {
+    "current": {
+      "poor_reached_share": 0.13776332939568017,
+      "inclusion_error": 0.7053043171299771
+    },
+    "model": {
+      "poor_reached_share": 0.29685860872040903,
+      "inclusion_error": 0.3647641992476006
+    },
+    "slots": 83948.256926778
+  }
+}

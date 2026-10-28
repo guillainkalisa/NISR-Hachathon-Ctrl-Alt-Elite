@@ -1,0 +1,34 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Who's Missing?{% endblock %} · Social protection targeting</title>
+  <link rel="stylesheet" href="{% static 'dashboard/style.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{% url 'dashboard:map' %}">Who's Missing?</a>
+    <nav>
+      {% url 'dashboard:map' as u_map %}{% url 'dashboard:simulator' as u_sim %}{% url 'dashboard:checker' as u_chk %}{% url 'dashboard:about' as u_about %}
+      <a href="{{ u_map }}" {% if request.path == u_map %}aria-current="page"{% endif %}>Map</a>
+      <a href="{{ u_sim }}" {% if request.path == u_sim %}aria-current="page"{% endif %}>Budget simulator</a>
+      <a href="{{ u_chk }}" {% if request.path == u_chk %}aria-current="page"{% endif %}>Household checker</a>
+      <a href="{{ u_about }}" {% if request.path == u_about %}aria-current="page"{% endif %}>Method &amp; data</a>
+    </nav>
+  </header>
+  {% if is_demo %}
+  <div class="demo-banner" role="alert">
+    <strong>Demo data.</strong> Figures shown are synthetic and are <em>not</em> NISR statistics. They will be replaced by EICV estimates.
+  </div>
+  {% endif %}
+  <main class="{% block main_class %}page{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">
+    Built for the NISR Big Data Hackathon 2026 · Data: NISR EICV · NOAA VIIRS &amp; WorldPop via Google Earth Engine · Boundaries: geoBoundaries (CC BY 4.0)
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

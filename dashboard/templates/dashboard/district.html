@@ -1,0 +1,153 @@
+{% extends "dashboard/base.html" %}
+{% load fmt %}
+{% block title %}{{ district.name }}{% endblock %}
+{% block content %}
+<p class="muted"><a href="{% url 'dashboard:map' %}">← All districts</a> · {{ district.province }} Province</p>
+<h1>{{ district.name }}</h1>
+<p class="lede">
+  In {{ latest.survey_round }}, an estimated <strong>{{ latest.excluded_poor|num }}</strong> poor households in {{ district.name }}
+  received no social protection, the {{ rank }}{% if rank == 1 %}st{% elif rank == 2 %}nd{% elif rank == 3 %}rd{% else %}th{% endif %}
+  highest number among {{ n_districts }} districts.
+  {% if not latest.reliable %}<span class="badge">⚠ Small sample ({{ latest.n_poor }} poor households): interpret with care</span>{% endif %}
+</p>
+
+<div class="grid kpis">
+  <div class="card kpi">
+    <div class="label">Poverty rate (people)</div>
+    <div class="value">{{ latest.poverty_rate|pct }}</div>
+    <div class="sub">95% CI {{ latest.poverty_ci_low|pct }}–{{ latest.poverty_ci_high|pct }}</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Poor households receiving no support</div>
+    <div class="value">{{ latest.exclusion_error|pct }}</div>
+    <div class="sub">95% CI {{ latest.exclusion_ci_low|pct }}–{{ latest.exclusion_ci_high|pct }}</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Recipients who are not poor</div>
+    <div class="value">{{ latest.inclusion_error|pct }}</div>
+    <div class="sub">of {{ latest.beneficiaries|num }} recipient households</div>
+  </div>
+</div>
+
+<div class="grid two-col">
+  <section class="card">
+    <h2>Change across survey rounds</h2>
+    <div class="chart-box"><canvas id="trend" aria-label="Line chart of poverty rate, support coverage and exclusion across survey rounds"></canvas></div>
+    <div class="table-wrap" style="margin-top:.75rem">
+      <table>
+        <thead><tr><th>Round</th><th class="r">Poverty rate</th><th class="r">Coverage of poor</th><th class="r">Poor missed</th></tr></thead>
+        <tbody>{% for t in trend %}<tr><td>{{ t.round }}</td><td class="r">{{ t.poverty_rate|pct }}</td><td class="r">{{ t.coverage_poor|pct }}</td><td class="r">{{ t.exclusion_error|pct }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Who are the poor households being missed?</h2>
+    <p class="muted">Share of excluded poor households in each group ({{ latest.survey_round }}). Groups overlap.</p>
+    {% for label, share in profile %}
+    <div class="bar-row">
+      <span>{{ label }}</span>
+      <div class="bar-track"><div class="bar-fill" style="width: {% if share %}{% widthratio share 1 100 %}{% else %}0{% endif %}%"></div></div>
+      <span class="v">{{ share|pct }}</span>
+    </div>
+    {% endfor %}
+  </section>
+</div>
+{% if satellite %}
+<section class="card" style="margin-top:1rem">
+  <h2>Satellite view: night-time lights</h2>
+  <p class="muted">VIIRS night-time lights and WorldPop 2024 population, averaged over EICV7 fieldwork (Oct 2023 – Oct 2024).
+    Light at night tracks electrification and economic activity, and it is measured every month, between surveys.</p>
+  <div class="grid kpis">
+    <div class="kpi">
+      <div class="label">People living under night-time light</div>
+      <div class="value">{{ satellite.lit_population_share|pct }}</div>
+      <div class="sub">{{ light_rank }}{% if light_rank == 1 %}st{% elif light_rank == 2 %}nd{% elif light_rank == 3 %}rd{% else %}th{% endif %} darkest of 30 districts</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Light where people live</div>
+      <div class="value">{{ satellite.ntl_pop_weighted|floatformat:2 }}</div>
+      <div class="sub">nW/cm²/sr, population-weighted</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Population (WorldPop 2024)</div>
+      <div class="value">{{ satellite.population|num }}</div>
+      <div class="sub">modelled estimate</div>
+    </div>
+  </div>
+  {% if nightlights %}
+  <h2 style="margin-top:.5rem">Monthly light since the survey</h2>
+  <div class="chart-box"><canvas id="lights" aria-label="Line chart of monthly average night-time light; gaps are months too cloudy to measure"></canvas></div>
+  <p class="muted">Gaps are months when clouds hid more than half the district. Satellite data retrieved {{ satellite.retrieved }}.</p>
+  {% endif %}
+</section>
+{% endif %}
+{{ trend|json_script:"trend-data" }}
+{{ nightlights|json_script:"lights-data" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function () {
+  const trend = JSON.parse(document.getElementById("trend-data").textContent);
+  const css = getComputedStyle(document.documentElement);
+  const v = (n) => css.getPropertyValue(n).trim();
+  const series = [
+    ["Poverty rate", "poverty_rate", "--series-1"],
+    ["Coverage of poor", "coverage_poor", "--series-2"],
+    ["Poor missed", "exclusion_error", "--series-3"],
+  ];
+  const lightsEl = document.getElementById("lights");
+  if (lightsEl) {
+    const lights = JSON.parse(document.getElementById("lights-data").textContent);
+    new Chart(lightsEl, {
+      type: "line",
+      data: {
+        labels: lights.map((l) => l.month),
+        datasets: [{
+          label: "Average night-time light", data: lights.map((l) => l.ntl), spanGaps: false,
+          borderColor: v("--series-1"), backgroundColor: v("--series-1"), borderWidth: 2,
+          pointRadius: 3, pointHoverRadius: 6, pointBorderColor: v("--surface"), pointBorderWidth: 2,
+        }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (c) => c.parsed.y == null ? " Too cloudy to measure" : ` ${c.parsed.y.toFixed(2)} nW/cm²/sr` } },
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { color: v("--muted") }, grid: { color: v("--border") } },
+          x: { ticks: { color: v("--muted"), maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false } },
+        },
+      },
+    });
+  }
+  new Chart(document.getElementById("trend"), {
+    type: "line",
+    data: {
+      labels: trend.map((t) => t.round),
+      datasets: series.map(([label, key, color]) => ({
+        label, data: trend.map((t) => t[key] == null ? null : t[key] * 100),
+        borderColor: v(color), backgroundColor: v(color), borderWidth: 2,
+        pointRadius: 4, pointHoverRadius: 6, pointBorderColor: v("--surface"), pointBorderWidth: 2,
+      })),
+    },
+    options: {
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "bottom", labels: { color: v("--text-2"), usePointStyle: true, boxHeight: 8 } },
+        tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed.y.toFixed(0)}%` } },
+      },
+      scales: {
+        y: { min: 0, max: 100, ticks: { color: v("--muted"), callback: (x) => x + "%" }, grid: { color: v("--border") } },
+        x: { ticks: { color: v("--muted") }, grid: { display: false } },
+      },
+    },
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "dashboard/base.html" %}
+{% load fmt %}
+{% block title %}Household checker{% endblock %}
+{% block content %}
+<h1>Household poverty checker</h1>
+<p class="lede">
+  For social-protection officers: enter what you can observe or ask in a short visit. A model trained on EICV estimates
+  how likely the household is to be below the poverty line. It is a <strong>screening aid to prioritise verification</strong>,
+  not an eligibility decision.
+</p>
+
+{% if not model_ready %}
+<div class="card">The model has not been trained yet. Run <code>python -m pipeline.train_pmt</code>.</div>
+{% else %}
+{% if result %}
+<div class="card result {{ result.level }}" style="margin-bottom:1rem" aria-live="polite">
+  <div class="muted">Estimated probability of being poor</div>
+  <div class="prob">{{ result.probability|pct }}</div>
+  <div><strong>{{ result.message }}</strong></div>
+  {% if result.reasons %}
+  <h2 style="margin-top:1rem">Why: compared with a typical household</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Trait</th><th>This household</th><th>Typical</th><th class="r">Effect on probability</th></tr></thead>
+      <tbody>
+      {% for r in result.reasons %}
+      <tr>
+        <td>{{ r.feature }}</td><td>{{ r.value }}</td><td class="muted">{{ r.typical }}</td>
+        <td class="r"><span class="effect {% if r.effect > 0 %}up{% else %}down{% endif %}">{% if r.effect > 0 %}▲ +{% else %}▼ {% endif %}{{ r.effect|floatformat:0 }} pts</span></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">▲ makes the household look poorer, ▼ less poor. Each effect is the change in probability if only that trait matched a typical household.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<form method="post" class="card">
+  {% csrf_token %}
+  <div class="form-grid">
+    {% for field in form %}
+    <div class="field{% if field.widget_type == 'checkbox' %} check{% endif %}">
+      {% if field.widget_type == 'checkbox' %}{{ field }} <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {% else %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}
+      {{ field.errors }}
+    </div>
+    {% endfor %}
+  </div>
+  <p style="margin:1.25rem 0 0"><button type="submit">Estimate</button></p>
+</form>
+
+{% if metrics %}
+<section class="card" style="margin-top:1rem">
+  <h2>How good is the model?</h2>
+  <p>
+    On households it never saw ({{ metrics.n_test|num }} held out by survey cluster), the model ranks a poor household above a
+    non-poor one {{ metrics.auc|pct }} of the time (AUC). With the <em>same number of beneficiaries</em> as today, ranking households
+    by the model would reach <strong>{{ metrics.targeting.model.poor_reached_share|pct }}</strong> of poor households, compared with
+    <strong>{{ metrics.targeting.current.poor_reached_share|pct }}</strong> under current targeting.
+  </p>
+  <h2 style="margin-top:1rem">What drives the prediction</h2>
+  {% with top=metrics.importance.0.importance %}
+  {% for f in metrics.importance|slice:":8" %}
+  <div class="bar-row">
+    <span>{{ f.feature }}</span>
+    <div class="bar-track"><div class="bar-fill" style="width: {% if f.importance > 0 %}{% widthratio f.importance top 100 %}{% else %}0{% endif %}%"></div></div>
+    <span class="v">{{ f.importance|floatformat:3 }}</span>
+  </div>
+  {% endfor %}
+  {% endwith %}
+  <p class="muted">Permutation importance: drop in AUC when the feature is shuffled.</p>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

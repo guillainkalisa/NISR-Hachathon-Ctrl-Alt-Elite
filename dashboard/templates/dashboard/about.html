@@ -1,0 +1,52 @@
+{% extends "dashboard/base.html" %}
+{% load fmt %}
+{% block title %}Method &amp; data{% endblock %}
+{% block content %}
+<h1>Method &amp; data</h1>
+<div class="grid" style="max-width:820px">
+  <section class="card">
+    <h2>The question</h2>
+    <p>Social protection programmes such as VUP (direct support, classic and expanded public works) and nutrition-sensitive direct support (NSDS) can miss poor households
+      (<strong>exclusion error</strong>) and reach better-off ones (<strong>inclusion error</strong>). This tool measures both, by
+      district, to support the NST2 commitment to reduce poverty with well-targeted social protection.</p>
+  </section>
+  <section class="card">
+    <h2>Data</h2>
+    <ul>
+      <li><strong>NISR Integrated Household Living Conditions Survey (EICV)</strong>: household consumption, official poverty status,
+        and receipt of VUP components and NSDS (section 9D) for the same households. Ubudehe categories are not in the public
+        microdata, and health insurance records do not show whether Mutuelle premiums were subsidised, so neither is counted as support.</li>
+      <li><strong>Night-time lights</strong>: NOAA VIIRS Day/Night Band monthly composites (stray-light corrected), via Google Earth Engine.
+        Pixels with fewer than 2 cloud-free nights are excluded, and district-months with under half the area observable are flagged.</li>
+      <li><strong>Population</strong>: WorldPop 100 m, 2024 (R2025A), via Google Earth Engine.</li>
+      <li><strong>District boundaries</strong>: geoBoundaries, CC BY 4.0.</li>
+    </ul>
+    <p class="muted">Only aggregated district estimates and the trained model are published. No household microdata leaves the analysts' machines.</p>
+  </section>
+  <section class="card">
+    <h2>Indicators</h2>
+    <ul>
+      <li><strong>Poverty rate</strong>: share of people in households below the national poverty line (person-weighted).</li>
+      <li><strong>Exclusion error</strong>: share of poor households receiving no programme.</li>
+      <li><strong>Inclusion error</strong>: share of recipient households that are not poor.</li>
+    </ul>
+    <p>All estimates use EICV survey weights. 95% confidence intervals use Taylor linearisation over strata and clusters.
+      Districts with fewer than 30 sampled poor households are flagged.</p>
+  </section>
+  <section class="card">
+    <h2>Household checker model</h2>
+    <p>A gradient-boosted classifier trained on easy-to-observe household traits (housing, assets, demographics), with
+      train and test sets split by survey cluster.
+      {% if metrics %}Test AUC: <strong>{{ metrics.auc|floatformat:3 }}</strong> ({{ metrics.round }}).{% endif %}</p>
+  </section>
+  <section class="card">
+    <h2>Limitations</h2>
+    <ul>
+      <li>EICV is designed for district-level estimates. Sector-level figures would need small-area estimation.</li>
+      <li>Programme receipt is self-reported and may be under-reported.</li>
+      <li>Consumption poverty is one view of need. A household can be above the line and still vulnerable.</li>
+      <li>The checker is a screening aid. Final eligibility must follow official procedures and community validation.</li>
+    </ul>
+  </section>
+</div>
+{% endblock %}
