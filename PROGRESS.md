@@ -35,7 +35,7 @@ Deliverables: **public GitHub repo + deployed app + documentation**. AI use must
 | Priority alerts page | ❌ To do | Last missing piece for the "Tech innovation" criterion |
 | Validation vs published NISR district poverty rates | ❌ To do | Needs `EICV7_Tables_MainIndicatorReport.xlsx` (public) |
 | Deployment (Render) | ❌ To do | `build.sh` is ready |
-| GitHub repo | ❌ To do | `git init` done, nothing committed yet |
+| GitHub repo | ✅ Done | https://github.com/guillainkalisa/NISR-Hachathon-Ctrl-Alt-Elite (branch `main`) |
 | Team names, NST2 targets, deadline in README | ❌ To do | Placeholders marked `_Fill in_` |
 
 ---
