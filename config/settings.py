@@ -138,7 +138,7 @@ STORAGES = {
 # Outputs of the data pipeline (aggregates and the trained model only - never microdata).
 INDICATORS_CSV = BASE_DIR / 'data' / 'processed' / 'indicators.csv'
 DISTRICTS_GEOJSON = BASE_DIR / 'data' / 'geo' / 'rwa_districts.geojson'
-PMT_MODEL_PATH = BASE_DIR / 'models' / 'pmt.joblib'
+PMT_MODEL_PATH = BASE_DIR / 'models' / 'pmt.npz'  # numpy export of pmt.joblib
 PMT_METRICS_PATH = BASE_DIR / 'models' / 'pmt_metrics.json'
 
 # Default primary key field type

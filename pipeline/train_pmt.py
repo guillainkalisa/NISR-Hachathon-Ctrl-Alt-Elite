@@ -24,6 +24,7 @@ from sklearn.inspection import permutation_importance
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import GroupShuffleSplit
 
+from pipeline import export_trees
 from pipeline.features import PMT_FEATURES, PMT_FEATURE_NAMES
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -88,8 +89,9 @@ def train(source, rnd, demo):
     # A "typical household" (weighted median of each feature) that explanations are measured against.
     train = df.iloc[train_idx]
     reference = {f: _weighted_median(train[f], train["hh_weight"]) for f in PMT_FEATURE_NAMES}
-    joblib.dump({"model": model, "features": PMT_FEATURE_NAMES, "reference": reference, "round": rnd, "is_demo": demo},
-                MODEL_DIR / "pmt.joblib")
+    bundle = {"model": model, "features": PMT_FEATURE_NAMES, "reference": reference, "round": rnd, "is_demo": demo}
+    joblib.dump(bundle, MODEL_DIR / "pmt.joblib")
+    export_trees.export(bundle, MODEL_DIR / "pmt.npz")  # what the website loads
     metrics = {"round": rnd, "is_demo": demo, "auc": float(auc), "n_train": len(train_idx), "n_test": len(test_idx),
                "importance": importance, "targeting": targeting_comparison(test, prob)}
     (MODEL_DIR / "pmt_metrics.json").write_text(json.dumps(metrics, indent=2))

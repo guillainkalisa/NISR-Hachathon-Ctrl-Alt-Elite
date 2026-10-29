@@ -144,7 +144,8 @@ pipeline/                   Data processing (no Django)
   prepare_eicv.py             Raw EICV -> one clean household table
   survey.py                   Weighted estimates and confidence intervals
   build_indicators.py         District indicators -> data/processed/indicators.csv
-  train_pmt.py                Poverty model -> models/pmt.joblib
+  train_pmt.py                Poverty model -> models/pmt.joblib (+ pmt.npz, the copy the website loads)
+  export_trees.py             Converts the model to numpy arrays so the website needs no scikit-learn
   satellite.py                Earth Engine -> data/processed/satellite_*.csv
   demo_data.py                Synthetic households (development only)
 data/

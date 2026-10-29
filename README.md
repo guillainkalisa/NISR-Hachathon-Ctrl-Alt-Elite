@@ -51,6 +51,7 @@ pipeline/            Data pipeline (plain Python, independent of Django)
   survey.py            Design-based estimators (weights, strata, clusters)
   build_indicators.py  District indicators -> data/processed/indicators.csv
   train_pmt.py         Poverty model -> models/pmt.joblib + metrics
+  export_trees.py      Model as plain numpy arrays (models/pmt.npz), used by the website
   satellite.py         Night-time lights + population per district via Google Earth Engine
   demo_data.py         Synthetic data for development only
 dashboard/           Django app (map, district, simulator, checker, about)

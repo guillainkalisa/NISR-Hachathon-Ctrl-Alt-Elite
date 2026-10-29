@@ -1,10 +1,12 @@
-"""Load the trained proxy-means-test model and score one household."""
+"""Load the trained proxy-means-test model and score one household.
+
+The model is read from models/pmt.npz (written by pipeline/export_trees.py) and its trees are walked with numpy,
+so the website needs neither scikit-learn nor scipy.
+"""
 
 import json
-import warnings
 from functools import lru_cache
 
-import joblib
 import numpy as np
 from django.conf import settings
 
@@ -25,7 +27,10 @@ KINDS = {f["name"]: f["kind"] for f in PMT_FEATURES}
 def load_model():
     if not settings.PMT_MODEL_PATH.exists():
         return None
-    return joblib.load(settings.PMT_MODEL_PATH)
+    with np.load(settings.PMT_MODEL_PATH) as z:
+        bundle = {k: z[k] for k in z.files}
+    bundle.update(json.loads(str(bundle.pop("meta"))))
+    return bundle
 
 
 @lru_cache(maxsize=1)
@@ -72,12 +77,52 @@ def explain(bundle, row, prob):
 
 
 def _predict(bundle, rows):
-    # A plain array in the model's feature order keeps pandas off the web server; sklearn only warns
-    # that the column names are missing.
-    X = np.array([[r[f] for f in bundle["features"]] for r in rows], dtype=float)
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="X does not have valid feature names")
-        return bundle["model"].predict_proba(X)[:, 1].tolist()
+    X = _encode(bundle, np.array([[r[f] for f in bundle["features"]] for r in rows], dtype=float))
+    raw = np.full(len(X), float(bundle["baseline"]))
+    for tree, bits in zip(bundle["tree_offsets"], bundle["bitset_offsets"]):
+        raw += _walk(bundle, X, int(tree), int(bits))
+    return (1 / (1 + np.exp(-raw))).tolist()
+
+
+def _encode(b, X):
+    """Same input transform as scikit-learn: category columns first, each category replaced by its index."""
+    X = X[:, b["column_order"]]
+    offsets = b["cat_offsets"]
+    for j, (start, end) in enumerate(zip(offsets[:-1], offsets[1:])):
+        cats = b["cat_values"][start:end]
+        match = X[:, j, None] == cats
+        X[:, j] = np.where(match.any(axis=1), match.argmax(axis=1), np.nan)
+    return X
+
+
+def _walk(b, X, tree, bits):
+    """Leaf values for every row of X in one tree, following scikit-learn's HistGradientBoosting split rules."""
+    node = np.full(len(X), tree)
+    rows = np.arange(len(X))
+    while True:
+        inner = ~b["node_is_leaf"][node].astype(bool)
+        if not inner.any():
+            return b["node_value"][node]
+        n, r = node[inner], rows[inner]
+        x = X[r, b["node_feature_idx"][n]]
+        left = x <= b["node_num_threshold"][n]
+        cat = b["node_is_categorical"][n].astype(bool)
+        if cat.any():
+            feat = b["node_feature_idx"][n][cat]
+            v = x[cat]
+            ok = (v >= 0) & (v < 256) & (v == np.floor(v))
+            vi = np.where(ok, v, 0).astype(int)
+            known = ok & _in_bitset(b["known_cat_bitsets"][b["f_idx_map"][feat]], vi)
+            goes_left = _in_bitset(b["left_cat_bitsets"][bits + b["node_bitset_idx"][n][cat]], vi)
+            # Unknown categories are treated like missing values.
+            left[cat] = np.where(known, goes_left, b["node_missing_go_to_left"][n][cat].astype(bool))
+        missing = np.isnan(x)
+        left[missing] = b["node_missing_go_to_left"][n][missing].astype(bool)
+        node[inner] = tree + np.where(left, b["node_left"][n], b["node_right"][n])
+
+
+def _in_bitset(bitsets, values):
+    return ((bitsets[np.arange(len(values)), values // 32] >> (values % 32).astype(np.uint32)) & 1).astype(bool)
 
 
 def _show(feature, value):
