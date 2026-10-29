@@ -1,9 +1,19 @@
-import pandas as pd
+import csv
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from dashboard.models import District, NightlightMonth, SatelliteSnapshot
+
+
+def _read(path):
+    with open(path, newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def _float(v, missing=None):
+    return float(v) if v not in ("", "nan") else missing
 
 
 class Command(BaseCommand):
@@ -14,18 +24,19 @@ class Command(BaseCommand):
         districts = {d.name: d for d in District.objects.all()}
         processed = settings.BASE_DIR / "data" / "processed"
 
-        snap = pd.read_csv(processed / "satellite_districts.csv")
+        snap = _read(processed / "satellite_districts.csv")
         SatelliteSnapshot.objects.all().delete()
         SatelliteSnapshot.objects.bulk_create(SatelliteSnapshot(
-            district=districts[r.district], period=r.period, population=r.population_worldpop, ntl_mean=r.ntl_mean,
-            ntl_pop_weighted=r.ntl_pop_weighted, lit_population_share=r.lit_population_share, retrieved=r.retrieved,
-        ) for r in snap.itertuples())
+            district=districts[r["district"]], period=r["period"], population=_float(r["population_worldpop"]),
+            ntl_mean=_float(r["ntl_mean"]), ntl_pop_weighted=_float(r["ntl_pop_weighted"]),
+            lit_population_share=_float(r["lit_population_share"]), retrieved=r["retrieved"],
+        ) for r in snap)
 
-        monthly = pd.read_csv(processed / "satellite_monthly.csv")
+        monthly = _read(processed / "satellite_monthly.csv")
         NightlightMonth.objects.all().delete()
         NightlightMonth.objects.bulk_create(NightlightMonth(
-            district=districts[r.district], month=r.month, ntl_mean=None if pd.isna(r.ntl_mean) else r.ntl_mean,
-            valid_share=0 if pd.isna(r.valid_share) else r.valid_share, reliable=bool(r.reliable), retrieved=r.retrieved,
-        ) for r in monthly.itertuples())
+            district=districts[r["district"]], month=r["month"], ntl_mean=_float(r["ntl_mean"]),
+            valid_share=_float(r["valid_share"], 0), reliable=r["reliable"] == "True", retrieved=r["retrieved"],
+        ) for r in monthly)
 
         self.stdout.write(self.style.SUCCESS(f"Loaded satellite data: {len(snap)} districts, {len(monthly)} district-months"))

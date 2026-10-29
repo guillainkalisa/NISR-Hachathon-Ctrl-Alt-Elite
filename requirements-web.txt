@@ -1,8 +1,7 @@
-# Only what the website needs at runtime (fits a PythonAnywhere free account's 512 MB disk).
+# Only what the website needs at runtime (about 300 MB, so it fits a PythonAnywhere free account).
 # The data pipelines (EICV reading, Earth Engine) need the full requirements.txt.
 Django==5.2.18
 joblib==1.6.0
 numpy==2.5.4
-pandas==3.1.0
 scikit-learn==1.9.1
 whitenoise==6.12.0

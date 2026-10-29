@@ -1,10 +1,11 @@
 """Load the trained proxy-means-test model and score one household."""
 
 import json
+import warnings
 from functools import lru_cache
 
 import joblib
-import pandas as pd
+import numpy as np
 from django.conf import settings
 
 from pipeline.features import PMT_FEATURES
@@ -71,7 +72,12 @@ def explain(bundle, row, prob):
 
 
 def _predict(bundle, rows):
-    return bundle["model"].predict_proba(pd.DataFrame(rows, columns=bundle["features"]))[:, 1].tolist()
+    # A plain array in the model's feature order keeps pandas off the web server; sklearn only warns
+    # that the column names are missing.
+    X = np.array([[r[f] for f in bundle["features"]] for r in rows], dtype=float)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="X does not have valid feature names")
+        return bundle["model"].predict_proba(X)[:, 1].tolist()
 
 
 def _show(feature, value):
