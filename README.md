@@ -20,6 +20,23 @@ recipients are **not** poor (inclusion error). It also shows where extra budget 
 | **Budget simulator** | Policy & budget | Extra slots allocated like today vs. by need, and how many more poor households need-based allocation reaches |
 | **Household checker** | Social-protection officers | Proxy-means-test model: estimated probability a household is poor from about 15 observable traits, with the traits that drove each result |
 
+## How to use it
+
+1. **Map (home page).** Pick a measure in the *Indicator* menu: survey measures such as poor households receiving
+   no support, or satellite measures such as people living under night-time light. Darker districts are worse off
+   (for coverage and light, darker means less). Hover over a district for its value, or read the top-10 list and
+   full table under the map. Click a district to open its profile.
+2. **District profile.** Headline rates with 95% confidence intervals, who the poor households being missed are
+   (female-headed, elderly head, disability, young children and so on), and monthly night-time lights since the
+   survey. Gaps in the lights chart are months too cloudy to measure.
+3. **Budget simulator.** Move the slider to add support places (1–50% of today's recipients). The page compares
+   sharing them out the way places are shared today with sharing them by need, and shows how many more poor
+   households the need-based option reaches.
+4. **Household checker.** Enter a household's observable traits (roof, floor, electricity, livestock, head of
+   household and so on). It returns the estimated probability that the household is poor, and the traits that
+   pushed the estimate up or down. It is a screening aid for officers, not an eligibility decision.
+5. **Method & data.** Definitions, model accuracy and data sources.
+
 ## Alignment with national priorities
 _Fill in: quote the relevant NST2 (2024–2029) poverty and social-protection targets and Vision 2050 pillar._
 
@@ -70,6 +87,43 @@ python manage.py runserver
 python manage.py test dashboard
 ```
 
+## Deployment (PythonAnywhere)
+
+1. **Bash console** (Consoles → Bash):
+   ```bash
+   git clone https://github.com/guillainkalisa/NISR-Hachathon-Ctrl-Alt-Elite.git
+   cd NISR-Hachathon-Ctrl-Alt-Elite
+   mkvirtualenv --python=python3.12 nisr
+   pip install --no-cache-dir -r requirements-web.txt
+   export DJANGO_DEBUG=0 DJANGO_SECRET_KEY=build-only
+   python manage.py collectstatic --noinput
+   python manage.py migrate
+   python manage.py load_indicators
+   python manage.py load_satellite
+   ```
+2. **Web tab** → Add a new web app → *Manual configuration* → Python 3.12. Then set:
+   - Source code: `/home/<username>/NISR-Hachathon-Ctrl-Alt-Elite`
+   - Virtualenv: `/home/<username>/.virtualenvs/nisr`
+   - Static files: URL `/static/` → directory `/home/<username>/NISR-Hachathon-Ctrl-Alt-Elite/staticfiles`
+3. **WSGI configuration file** (link on the Web tab): replace its contents with
+   ```python
+   import os, sys
+   path = "/home/<username>/NISR-Hachathon-Ctrl-Alt-Elite"
+   if path not in sys.path:
+       sys.path.insert(0, path)
+   os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings"
+   os.environ["DJANGO_DEBUG"] = "0"
+   os.environ["DJANGO_SECRET_KEY"] = "<long random string>"
+   os.environ["DJANGO_ALLOWED_HOSTS"] = "<username>.pythonanywhere.com"
+   os.environ["DJANGO_CSRF_TRUSTED_ORIGINS"] = "https://<username>.pythonanywhere.com"
+   from django.core.wsgi import get_wsgi_application
+   application = get_wsgi_application()
+   ```
+4. Click **Reload** and open `https://<username>.pythonanywhere.com`.
+
+To update after a new push: `git pull`, re-run `collectstatic`/`migrate`/`load_*` if static files or data changed, then **Reload**.
+Generate the secret key with `python -c "import secrets; print(secrets.token_urlsafe(50))"` and never commit it.
+
 ## Deployment (Render)
 - Build command: `./build.sh`
 - Start command: `gunicorn config.wsgi`
@@ -83,12 +137,24 @@ See the in-app **Method & data** page. In short: survey-weighted ratios with Tay
 EICV strata and clusters. Districts with under 30 sampled poor households are flagged. The model is a gradient-boosted
 classifier, evaluated on survey clusters it never saw, against current targeting at an equal number of beneficiaries.
 
-## Data sources
-- National Institute of Statistics of Rwanda: EICV7 (Integrated Household Living Conditions Survey, 2023/24), cross-sectional sample
-- NOAA VIIRS Day/Night Band monthly composites (VCMSLCFG), via Google Earth Engine
-- WorldPop 100 m population 2024 (R2025A), via Google Earth Engine
-- geoBoundaries: Rwanda ADM2 boundaries, CC BY 4.0
+## Data
+
+The data the app uses is in [`data/`](data/); [`data/README.md`](data/README.md) describes every file.
+
+| Data | Source & link | In this repo? |
+|---|---|---|
+| EICV7 household survey 2023/24, cross-sectional sample (15,054 households) | NISR Microdata Catalog: https://microdatabk.statistics.gov.rw/index.php/catalog/119 | **District results only** (`data/processed/indicators.csv`). The raw microdata (about 1.5 GB) is licensed by NISR to approved users and must not be redistributed; request access at the link above |
+| EICV7 data dictionary | Same catalog page (DDI metadata) | Yes, `data/metadata/` |
+| Night-time lights: NOAA VIIRS DNB monthly, cloud-screened (`NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG`) | https://developers.google.com/earth-engine/datasets/catalog/NOAA_VIIRS_DNB_MONTHLY_V1_VCMSLCFG | Yes, district results in `data/processed/satellite_*.csv` |
+| Population: WorldPop 100 m, 2024 (`WorldPop/GP/100m/R2025A/v1/pop`) | https://www.worldpop.org via Google Earth Engine | Yes, inside `satellite_districts.csv` |
+| District boundaries (ADM2), CC BY 4.0 | geoBoundaries: https://www.geoboundaries.org | Yes, `data/geo/rwa_districts.geojson` |
+
+To rebuild everything from the raw data, put the EICV7 Stata files in `data/raw/EICV7/` and follow *Running locally*, option B.
+
+## Demo video
+[`demo/`](demo/): 3-minute screen recording of the app (_add file name_).
 
 ## Team, originality & AI use
-_Team names and universities._ This is our original work for this hackathon. AI tool use is disclosed in
+_Team names and universities._ Proof of eligibility for both members is in [`eligibility/`](eligibility/).
+This is our original work for this hackathon. AI tool use is disclosed in
 [AI_USAGE.md](AI_USAGE.md).
