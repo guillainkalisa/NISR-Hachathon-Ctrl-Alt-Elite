@@ -188,4 +188,4 @@ models/                     Trained model + its accuracy figures
 ## 8. Open questions
 
 - Submission **deadline**?
-- Team names and universities for the README?
+- ~~Team names and universities for the README?~~ Done 2026-10-30: Ctrl Alt Elite, University of Rwanda (Year 3): Hakiza Divine, KALISA Guillain, Niyogakiza Japhet.
